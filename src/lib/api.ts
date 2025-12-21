@@ -10,7 +10,7 @@ function normalizeBaseUrl(value?: string) {
     return trimmed;
 }
 
-const API_BASE_URL = normalizeBaseUrl(import.meta.env.API_BASE_URL);
+const API_BASE_URL = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 type ApiErrorPayload = {
     error?: {
