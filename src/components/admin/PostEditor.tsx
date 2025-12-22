@@ -3,7 +3,8 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Bold, CircleSmall, Code, Heading2, Heading3, Highlighter, Italic, ListOrdered, Redo2, TextQuote, Undo2 } from "lucide-react";
+import { Bold, CircleSmall, Code, Heading2, Heading3, Highlighter, Italic, ListOrdered, Redo2, TextQuote, Underline as UnderlineIcon, Undo2 } from "lucide-react";
+import Underline from "@tiptap/extension-underline";
 
 type PostEditorProps = {
     value: string;
@@ -18,6 +19,7 @@ export default function PostEditor({ value, onChange, className }: PostEditorPro
             StarterKit.configure({
                 heading: { levels: [1, 2, 3] },
             }),
+            Underline,
         ],
         content: value || "",
         onUpdate: ({ editor }) => {
@@ -25,7 +27,7 @@ export default function PostEditor({ value, onChange, className }: PostEditorPro
         },
         editorProps: {
             attributes: {
-                class: "tiptap focus:outline-none",
+                class: "prose focus:outline-none",
             },
         },
     });
@@ -40,6 +42,7 @@ export default function PostEditor({ value, onChange, className }: PostEditorPro
 
     const canBold = editor?.can().chain().focus().toggleBold().run() ?? false;
     const canItalic = editor?.can().chain().focus().toggleItalic().run() ?? false;
+    const canUnderline = editor?.can().chain().focus().toggleUnderline().run() ?? false;
     const canH2 = editor?.can().chain().focus().toggleHeading({ level: 2 }).run() ?? false;
     const canH3 = editor?.can().chain().focus().toggleHeading({ level: 3 }).run() ?? false;
     const canBullet = editor?.can().chain().focus().toggleBulletList().run() ?? false;
@@ -72,6 +75,16 @@ export default function PostEditor({ value, onChange, className }: PostEditorPro
                     disabled={!canItalic}
                 >
                     <Italic />
+                </Button>
+                <Button
+                    type="button"
+                    variant={editor?.isActive("underline") ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-8 px-2"
+                    onClick={() => editor?.chain().focus().toggleUnderline().run()}
+                    disabled={!canUnderline}
+                >
+                    <UnderlineIcon />
                 </Button>
                 <Button
                     type="button"
