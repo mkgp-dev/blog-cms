@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import Underline from "@tiptap/extension-underline";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect } from "react";
@@ -10,12 +11,12 @@ type PostViewerProps = {
 
 export default function PostViewer({ content, className }: PostViewerProps) {
     const editor = useEditor({
-        extensions: [StarterKit],
+        extensions: [StarterKit, Underline],
         content: content || "",
         editable: false,
         editorProps: {
             attributes: {
-                class: "tiptap",
+                class: "prose max-w-none focus:outline-none",
             },
         },
     });
