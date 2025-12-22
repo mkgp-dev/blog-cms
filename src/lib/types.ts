@@ -22,10 +22,12 @@ export type Post = {
 
 export type Comment = {
     id: string;
-    postId: string;
     username: string;
     content: string;
     createdAt: string;
     updatedAt: string;
-    postTitle?: string | null;
+    post?: {
+        id: string;
+        title: string;
+    }
 };

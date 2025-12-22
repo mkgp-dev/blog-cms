@@ -93,7 +93,7 @@ export default function CommentsPage() {
             {
                 accessorKey: "postTitle",
                 header: "Post",
-                cell: ({ row }) => row.original.postTitle ?? row.original.postId,
+                cell: ({ row }) => row.original.post?.title ?? row.original.post?.id,
             },
             {
                 accessorKey: "createdAt",
