@@ -22,7 +22,7 @@ A simple yet modern front-end dashboard for managing my blog posts and readersâ€
 ## Environment Variables
 Create a `.env` file
 ```env
-VITE_API_BASE_URL="http://localhost:3000/api"
+VITE_API_BASE_URLS="http://localhost:3000/api,http://localhost:4000/api"
 ```
 
 ## License
