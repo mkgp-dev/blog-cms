@@ -2,15 +2,86 @@ import { getToken } from "@/lib/storage";
 import type { Comment, Paginated, Post } from "@/lib/types";
 import { notifyUnauthorized } from "@/lib/events";
 
+const LOCAL_API_BASE_URL = "http://localhost:3000/api";
+const HEALTH_CHECK_TTL_MS = 10000;
+const HEALTH_TIMEOUT_MS = 2500;
+
 function normalizeBaseUrl(value?: string) {
     const trimmed = value?.trim();
     if (!trimmed || trimmed === "undefined" || trimmed === "null") {
-        return "http://localhost:3000/api";
+        return "";
     }
-    return trimmed;
+    return trimmed.replace(/\/+$/, "");
 }
 
-const API_BASE_URL = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
+function parseBaseUrls(...values: Array<string | undefined>) {
+    const entries = values
+        .flatMap((value) => value?.split(",") ?? [])
+        .map((value) => normalizeBaseUrl(value))
+        .filter(Boolean);
+
+    const unique = Array.from(new Set(entries));
+    return unique.length ? unique : [LOCAL_API_BASE_URL];
+}
+
+const BASE_URL_CANDIDATES = parseBaseUrls(
+    import.meta.env.VITE_API_BASE_URLS
+);
+
+let resolvedBaseUrl: string | null = null;
+let lastHealthCheck = 0;
+let resolvePromise: Promise<string> | null = null;
+
+async function checkHealth(base: string) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+    try {
+        const response = await fetch(`${base}/health`, {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+        });
+        return response.ok;
+    } catch {
+        return false;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+async function pickHealthyBase() {
+    for (const base of BASE_URL_CANDIDATES) {
+        if (await checkHealth(base)) return base;
+    }
+    return BASE_URL_CANDIDATES[0];
+}
+
+async function resolveBaseUrl(force = false) {
+    if (BASE_URL_CANDIDATES.length === 1) {
+        resolvedBaseUrl = BASE_URL_CANDIDATES[0];
+        return resolvedBaseUrl;
+    }
+
+    const now = Date.now();
+    if (!force && resolvedBaseUrl && now - lastHealthCheck < HEALTH_CHECK_TTL_MS) {
+        return resolvedBaseUrl;
+    }
+
+    if (resolvePromise) return resolvePromise;
+    resolvePromise = pickHealthyBase().then((base) => {
+        resolvedBaseUrl = base;
+        lastHealthCheck = Date.now();
+        resolvePromise = null;
+        return base;
+    });
+
+    return resolvePromise;
+}
+
+function markHealthStale() {
+    resolvedBaseUrl = null;
+    lastHealthCheck = 0;
+}
 
 type ApiErrorPayload = {
     error?: {
@@ -60,36 +131,58 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
 }
 
 async function apiFetch<T>(path: string, options: RequestInit = {}, withAuth = true): Promise<T> {
-    const base = API_BASE_URL;
-    const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+    const method = (options.method ?? "GET").toUpperCase();
+    const canRetry = method === "GET" || method === "HEAD";
     const headers = new Headers(options.headers);
 
     headers.set("Accept", "application/json");
-    if (options.body && !headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-    }
+    if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
     if (withAuth) {
         const token = await getToken();
         if (token) headers.set("Authorization", `Bearer ${token}`);
     }
 
-    const response = await fetch(url, { ...options, headers });
-    const text = await response.text();
-    const data = text ? safeJson(text) : null;
+    const doRequest = async (base: string) => {
+        const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+        const response = await fetch(url, { ...options, headers });
+        const text = await response.text();
+        const data = text ? safeJson(text) : null;
 
-    if (!response.ok) {
-        if (response.status === 401 && withAuth) {
-            notifyUnauthorized();
+        if (!response.ok) {
+            if (response.status === 401 && withAuth) {
+                notifyUnauthorized();
+            }
+
+            const payload = (data ?? {}) as ApiErrorPayload;
+            const message = payload.error?.message || response.statusText || "Request failed";
+            const code = payload.error?.code || "request_failed";
+            throw new ApiError(response.status, code, message, payload.error?.details);
         }
 
-        const payload = (data ?? {}) as ApiErrorPayload;
-        const message = payload.error?.message || response.statusText || "Request failed";
-        const code = payload.error?.code || "request_failed";
-        throw new ApiError(response.status, code, message, payload.error?.details);
-    }
+        return data as T;
+    };
 
-    return data as T;
+    const base = await resolveBaseUrl();
+    try {
+        return await doRequest(base);
+    } catch (error) {
+        markHealthStale();
+
+        const shouldRetry =
+            canRetry &&
+            BASE_URL_CANDIDATES.length > 1 &&
+            (error instanceof ApiError ? error.status >= 500 || error.status === 0 : true);
+
+        if (shouldRetry) {
+            const fallbackBase = await resolveBaseUrl(true);
+            if (fallbackBase !== base) {
+                return await doRequest(fallbackBase);
+            }
+        }
+
+        throw error;
+    }
 }
 
 export function getErrorMessage(error: unknown) {
