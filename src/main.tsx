@@ -4,7 +4,7 @@ import "@/index.css"
 import App from "@/App.tsx"
 import { Toaster } from "sonner"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { AuthProvider } from "@/lib/auth.ts"
+import { AuthProvider } from "@/common/auth/AuthContext"
 
 const queryClient = new QueryClient({
   defaultOptions: {
