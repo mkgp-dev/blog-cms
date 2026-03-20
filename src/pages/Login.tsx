@@ -3,11 +3,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { getErrorMessage, login } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
+import { login } from "@/common/api/auth-api";
+import { getErrorMessage } from "@/common/api/client";
+import { useAuth } from "@/common/auth/useAuth";
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -39,7 +40,8 @@ export default function LoginPage() {
             await setToken(result.token);
 
             const redirectTo =
-                (location.state as { from?: Location })?.from?.pathname || "/admin/posts";
+                (location.state as { from?: { pathname?: string } })?.from?.pathname ||
+                "/admin/posts";
             navigate(redirectTo, { replace: true });
         } catch (error) {
             toast.error(getErrorMessage(error));
@@ -59,14 +61,14 @@ export default function LoginPage() {
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
             <div className="flex flex-col w-full items-center gap-6 lg:justify-start">
-                <a href="/login">
+                <Link to="/">
                     <img
                         src="/logo.png"
                         alt="logo"
                         title="logo"
                         className="h-20"
                     />
-                </a>
+                </Link>
 
                 <Card className="w-full max-w-sm">
                     <CardContent>

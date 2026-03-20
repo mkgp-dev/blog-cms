@@ -1,19 +1,16 @@
-import { useAuth } from "@/lib/auth";
 import { createBrowserRouter, Navigate } from "react-router";
+import AdminLayout from "@/features/admin/components/AdminLayout";
+import RequireAuth from "@/features/admin/components/RequireAuth";
+import CommentsPage from "@/features/admin/pages/CommentsPage";
+import PostsPage from "@/features/admin/pages/PostsPage";
+import HomePage from "@/features/public/pages/HomePage";
+import PostContentPage from "@/features/public/pages/PostContentPage";
 import LoginPage from "@/pages/Login";
-import RequireAuth from "@/components/admin/RequireAuth";
-import AdminLayout from "@/components/admin/AdminLayout";
-import PostsPage from "@/pages/Posts";
-import CommentsPage from "@/pages/Comments";
 import NotFoundPage from "@/pages/NotFound";
 
-function RootRedirect() {
-    const { token } = useAuth();
-    return <Navigate to={token ? "/admin/posts" : "/login"} replace />;
-}
-
 export const router = createBrowserRouter([
-    { path: "/", element: <RootRedirect /> },
+    { path: "/", element: <HomePage /> },
+    { path: "/content/:id", element: <PostContentPage /> },
     { path: "/login", element: <LoginPage /> },
     {
         path: "/admin",
